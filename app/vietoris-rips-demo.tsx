@@ -1,6 +1,6 @@
 "use client";
 
-import { PointerEvent, WheelEvent, useEffect, useMemo, useRef, useState } from "react";
+import { PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { DIAGRAM_SAMPLES } from "@/src/data/diagram-samples";
 import { POINT_CLOUD_SAMPLES } from "@/src/data/point-cloud-samples";
 import { ProjectedPoint, projectPointsWithWasm } from "@/src/wasm/vietoris-rips-wasm";
@@ -48,6 +48,7 @@ export default function VietorisRipsDemo() {
     cycles: 0,
   });
   const [isFiltrationPending, setIsFiltrationPending] = useState(false);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
@@ -173,30 +174,39 @@ export default function VietorisRipsDemo() {
     return () => window.clearInterval(timer);
   }, [diagram.epsilonSteps.length, playing]);
 
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const svgElement = svg;
+
+    function handleSvgWheel(event: globalThis.WheelEvent) {
+      event.preventDefault();
+      const bounds = svgElement.getBoundingClientRect();
+      const mouseX = ((event.clientX - bounds.left) / bounds.width) * WIDTH;
+      const mouseY = ((event.clientY - bounds.top) / bounds.height) * HEIGHT;
+      const zoomFactor = event.deltaY < 0 ? 1.12 : 0.89;
+
+      setViewport((current) => {
+        const nextScale = clamp(current.scale * zoomFactor, MIN_ZOOM, MAX_ZOOM);
+        const ratio = nextScale / current.scale;
+        return {
+          scale: nextScale,
+          x: mouseX - (mouseX - current.x) * ratio,
+          y: mouseY - (mouseY - current.y) * ratio,
+        };
+      });
+    }
+
+    svgElement.addEventListener("wheel", handleSvgWheel, { passive: false });
+    return () => svgElement.removeEventListener("wheel", handleSvgWheel);
+  }, []);
+
   function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
     if (!dragStart) return;
     setRotation((current) => ({
       x: current.x - event.movementY * 0.008,
       y: current.y - event.movementX * 0.008,
     }));
-  }
-
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const mouseX = ((event.clientX - bounds.left) / bounds.width) * WIDTH;
-    const mouseY = ((event.clientY - bounds.top) / bounds.height) * HEIGHT;
-    const zoomFactor = event.deltaY < 0 ? 1.12 : 0.89;
-
-    setViewport((current) => {
-      const nextScale = clamp(current.scale * zoomFactor, MIN_ZOOM, MAX_ZOOM);
-      const ratio = nextScale / current.scale;
-      return {
-        scale: nextScale,
-        x: mouseX - (mouseX - current.x) * ratio,
-        y: mouseY - (mouseY - current.y) * ratio,
-      };
-    });
   }
 
   return (
@@ -217,10 +227,11 @@ export default function VietorisRipsDemo() {
           </div>
         </header>
 
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="overflow-hidden rounded-lg border border-[#d4d8cc] bg-[#fbfcf8] shadow-sm">
+        <section className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="aspect-[11/7] w-full overflow-hidden rounded-lg border border-[#d4d8cc] bg-[#fbfcf8] shadow-sm">
             <svg
-              className="block h-[68vh] min-h-[440px] w-full touch-none"
+              ref={svgRef}
+              className="block h-full w-full touch-none"
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               role="img"
               aria-label="Interactive rotatable Vietoris-Rips filtration scene"
@@ -231,7 +242,6 @@ export default function VietorisRipsDemo() {
               onPointerMove={handlePointerMove}
               onPointerUp={() => setDragStart(null)}
               onPointerCancel={() => setDragStart(null)}
-              onWheel={handleWheel}
             >
               <rect width={WIDTH} height={HEIGHT} fill="#fbfcf8" />
               <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}>
@@ -349,7 +359,6 @@ export default function VietorisRipsDemo() {
               <Metric label="0-simplices" value={points.length.toString()} />
               <Metric label="1-simplices rendered" value={ `${filtration.edges.length.toString()}/${MAX_EDGES}` } />
               <Metric label="2-simiplices rendered" value={`${filtration.triangles.length}/${MAX_TRIANGLES}`} />
-              <Metric label="2-cached" value={filtration.seededTriangleCount.toString()} />
               <Metric label="H1 homology" value={currentHomology.h1.toString()} />
               <Metric label="H2 homology" value={currentHomology.h2.toString()} />
             </div>
