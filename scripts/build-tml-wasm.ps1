@@ -1,14 +1,14 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$source = Join-Path $repoRoot "wasm/tml_filtration.cpp"
+$source = Join-Path $repoRoot "src/wasm/tml_filtration.cpp"
 $output = Join-Path $repoRoot "public/tml-filtration.wasm"
 
 docker run --rm `
   -v "${repoRoot}:/src" `
   -w /src `
   emscripten/emsdk:latest `
-  emcc wasm/tml_filtration.cpp `
+  emcc src/wasm/tml_filtration.cpp `
     -O3 `
     -std=c++17 `
     -s STANDALONE_WASM=1 `

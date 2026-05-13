@@ -20,7 +20,7 @@ The source notebook is `../notebooks/tml_pointcloud_pipeline.ipynb`. Its filtrat
    The notebook samples mesh surfaces, normalizes each point cloud, and subsamples with FPS into `../data/processed/train_points.npy` and `../data/processed/train_labels.npy`. A compact web subset is stored in `src/data/point-cloud-samples.ts`.
 
 2. **Represent the filtration state**  
-   For a selected notebook epsilon step, `public/tml-wasm-loader.js` runs the C++/WASM filtration logic: it builds upper-triangle Vietoris-Rips edges, keeps the shortest edges when the cap is exceeded, searches full-neighborhood triangles, counts every detected 2-simplex, and displays rendered triangles whose interiors do not cross accepted triangles.
+   For a selected notebook epsilon step, `src/wasm/tml-wasm-loader.worker.ts` runs the C++/WASM filtration logic: it builds upper-triangle Vietoris-Rips edges, keeps the shortest edges when the cap is exceeded, searches full-neighborhood triangles, counts every detected 2-simplex, and displays rendered triangles whose interiors do not cross accepted triangles.
 
 3. **Project the rotatable scene**  
    The notebook's Plotly scene is translated into a React/SVG renderer. Pointer drag updates X/Y rotation, the 3D points are projected into 2D, and edges/triangles are redrawn from the current filtration.
@@ -35,14 +35,14 @@ The source notebook is `../notebooks/tml_pointcloud_pipeline.ipynb`. Its filtrat
    Keep the expensive work in Python: preprocess meshes, normalize point clouds, compute diagrams, and save the `.npy` caches. Then regenerate `src/data/point-cloud-samples.ts` from selected cache rows so the Next.js bundle contains only the point clouds needed for the demo.
 
 7. **Cache filtration work off the UI thread**  
-   The `public/tml-wasm-loader.js` worker caches filtration results by sample/epsilon/caps. Larger filtrations seed their rendered triangle set from the nearest smaller cached epsilon before scanning new candidates, then nearby epsilon values are precomputed in the background to make slider scrubbing smoother.
+   The `src/wasm/tml-wasm-loader.worker.ts` worker caches filtration results by sample/epsilon/caps. Larger filtrations seed their rendered triangle set from the nearest smaller cached epsilon before scanning new candidates, then nearby epsilon values are precomputed in the background to make slider scrubbing smoother.
 
 ## Project Structure
 
 - `app/page.tsx` mounts the demo.
 - `app/vietoris-rips-demo.tsx` contains the client-side controls and calls WASM for projection and filtration work.
-- `public/tml-wasm-loader.js` loads the WASM module, exposes the worker message handler, and caches computed filtrations.
-- `wasm/tml_filtration.cpp` contains the C++ point projection and Vietoris-Rips filtration implementation.
+- `src/wasm/tml-wasm-loader.worker.ts` loads the WASM module, exposes the worker message handler, and caches computed filtrations.
+- `src/wasm/tml_filtration.cpp` contains the C++ point projection and Vietoris-Rips filtration implementation.
 - `src/data/point-cloud-samples.ts` stores the processed point-cloud subset exported from the notebook cache.
 - `src/data/diagram-samples.ts` stores matched H1/H2 diagram-derived homology counts for topology-aware diagram epsilon steps.
 - `app/globals.css` loads Tailwind CSS, local system font stacks, and global theme variables.

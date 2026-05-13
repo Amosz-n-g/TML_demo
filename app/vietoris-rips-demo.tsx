@@ -92,7 +92,9 @@ export default function VietorisRipsDemo() {
   }, [points, rotation]);
 
   useEffect(() => {
-    const worker = new Worker("/tml-wasm-loader.js");
+    const worker = new Worker(new URL("../src/wasm/tml-wasm-loader.worker.ts", import.meta.url), {
+      type: "module",
+    });
     workerRef.current = worker;
     worker.onmessage = (event: MessageEvent<Filtration & { id: number; kind: string; error?: string }>) => {
       if (event.data.kind !== "calculate" || event.data.id !== requestIdRef.current) return;
