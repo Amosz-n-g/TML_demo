@@ -2,7 +2,8 @@
 
 import { PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { DIAGRAM_SAMPLES } from "@/src/data/diagram-samples";
-import { POINT_CLOUD_SAMPLES } from "@/src/data/point-cloud-samples";
+import samplePredictions from "@/src/data/sample_predictions.json";
+import { MODELNET40_CLASSES, POINT_CLOUD_SAMPLES } from "@/src/data/point-cloud-samples";
 import { ProjectedPoint, projectPointsWithWasm } from "@/src/wasm/vietoris-rips-wasm";
 
 type Filtration = {
@@ -15,6 +16,19 @@ type Filtration = {
   cycles: number;
   cached?: boolean;
 };
+
+type PredictionRecord = {
+  index: number;
+  pred: number;
+  prob: number;
+};
+
+type SamplePredictions = {
+  train: PredictionRecord[];
+  test: PredictionRecord[];
+};
+
+const predictions = samplePredictions as SamplePredictions;
 
 const WIDTH = 880;
 const HEIGHT = 560;
@@ -60,6 +74,20 @@ export default function VietorisRipsDemo() {
     () => DIAGRAM_SAMPLES.find((item) => item.sampleId === sample.id) ?? DIAGRAM_SAMPLES[0],
     [sample.id],
   );
+  const samplePrediction = useMemo(() => {
+    const group = predictions[sample.split] ?? [];
+    return group.find((item) => item.index === sample.sourceIndex);
+  }, [sample]);
+
+  const predictedClassName = samplePrediction
+    ? MODELNET40_CLASSES[samplePrediction.pred].replaceAll("_", " ")
+    : "unknown";
+  const predictedConfidence = samplePrediction ? `${(samplePrediction.prob * 100).toFixed(1)}%` : "N/A";
+  const predictionStatus = samplePrediction
+    ? samplePrediction.pred === sample.label
+      ? "correct"
+      : "incorrect"
+    : "unknown";
   const currentStepIndex = clamp(stepIndex, 0, diagram.epsilonSteps.length - 1);
   const currentHomology = diagram.homologySteps[currentStepIndex];
   const epsilon = currentHomology.epsilon;
@@ -355,12 +383,18 @@ export default function VietorisRipsDemo() {
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <Metric label="class" value={sample.className.replace("_", " ")} />
+              <Metric label="class" value={sample.className.replaceAll("_", " ")} />
               <Metric label="0-simplices" value={points.length.toString()} />
               <Metric label="1-simplices rendered" value={ `${filtration.edges.length.toString()}/${MAX_EDGES}` } />
               <Metric label="2-simiplices rendered" value={`${filtration.triangles.length}/${MAX_TRIANGLES}`} />
               <Metric label="H1 homology" value={currentHomology.h1.toString()} />
               <Metric label="H2 homology" value={currentHomology.h2.toString()} />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Metric label="predicted" value={predictedClassName} />
+              <Metric label="confidence" value={predictedConfidence} />
+              <Metric label="status" value={predictionStatus} />
             </div>
 
             <p className="mt-6 border-t border-[#e1e4db] pt-4 text-sm leading-6 text-[#536055]">
@@ -375,6 +409,37 @@ export default function VietorisRipsDemo() {
               from topology-aware persistence-diagram epsilon values.
             </p>
           </aside>
+        </section>
+
+        <section className="rounded-lg border border-[#d4d8cc] bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">Classification Results</h2>
+              <p className="mt-1 text-sm text-[#667060]">
+                Hybrid TML + CNN predictions are loaded from the notebook pipeline and shown for the selected point cloud sample.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-[#d4d8cc] bg-[#fbfcf8] p-3">
+                <p className="text-sm font-semibold text-[#17201b]">Confusion matrix</p>
+                <img
+                  src="/api/outputs/confusion_matrix"
+                  alt="Confusion matrix for the hybrid classification model"
+                  className="mt-3 h-44 w-full object-contain"
+                  loading="lazy"
+                />
+              </div>
+              <div className="rounded-lg border border-[#d4d8cc] bg-[#fbfcf8] p-3">
+                <p className="text-sm font-semibold text-[#17201b]">Per-class accuracy</p>
+                <img
+                  src="/api/outputs/per_class_accuracy"
+                  alt="Per-class accuracy for the hybrid classification model"
+                  className="mt-3 h-44 w-full object-contain"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </div>
         </section>
       </section>
     </main>
