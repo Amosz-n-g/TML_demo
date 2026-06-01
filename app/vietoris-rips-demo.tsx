@@ -423,7 +423,7 @@ export default function VietorisRipsDemo() {
               <div className="rounded-lg border border-[#d4d8cc] bg-[#fbfcf8] p-3">
                 <p className="text-sm font-semibold text-[#17201b]">Confusion matrix</p>
                 <img
-                  src="/api/outputs/confusion_matrix"
+                  src="/confusion_matrix.png"
                   alt="Confusion matrix for the hybrid classification model"
                   className="mt-3 h-44 w-full object-contain"
                   loading="lazy"
@@ -432,7 +432,7 @@ export default function VietorisRipsDemo() {
               <div className="rounded-lg border border-[#d4d8cc] bg-[#fbfcf8] p-3">
                 <p className="text-sm font-semibold text-[#17201b]">Per-class accuracy</p>
                 <img
-                  src="/api/outputs/per_class_accuracy"
+                  src="/per_class_accuracy.png"
                   alt="Per-class accuracy for the hybrid classification model"
                   className="mt-3 h-44 w-full object-contain"
                   loading="lazy"
